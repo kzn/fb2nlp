@@ -47,6 +47,16 @@ public class FBReader {
 		int sents = 0;
 		TObjectIntHashMap<String> words = new TObjectIntHashMap<String>();
 		
+		PrintWriter pwSent;
+		
+		public JSoupProcessor() throws IOException {
+			pwSent = new PrintWriter("sents.txt");
+		}
+		
+		public void close() throws IOException {
+			pwSent.close();
+		}
+		
 		public void add(String word) {
 			for(int i = 0; i != word.length(); i++) {
 				if(Character.isDigit(word.charAt(i)))
@@ -61,8 +71,12 @@ public class FBReader {
 		public void parse(String text) {
 			List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
 			
-			List<BaseToken> sents = ss.split(new TokenStream(tokens));
+			List<AbstractToken> sents = ss.split(new TokenStream(tokens));
 			this.sents += sents.size();
+			
+			for(AbstractToken sent : sents) {
+				pwSent.println(sent.text());
+			}
 			
 			List<AbstractToken> filtered = new ArrayList<AbstractToken>(tokens.size());
 			
@@ -83,7 +97,7 @@ public class FBReader {
 			
 		}
 		
-		public String render(Elements e) {
+		public String render(Element e) {
 			final StringBuilder sb = new StringBuilder();
 			
 			e.traverse(new NodeVisitor() {
@@ -91,7 +105,7 @@ public class FBReader {
 				@Override
 				public void tail(Node node, int depth) {
 					if(node instanceof Element && ((Element)node).tagName().equals("p")) {
-						sb.append("\n\n");
+						sb.append("\n");
 					}
 				}
 				
@@ -121,9 +135,13 @@ public class FBReader {
 			rusCount++;
 			Elements cnt = doc.select("p");
 			cnt.select("poem table epigraph empty-line stanza subtitle").remove();
-			String text = render(cnt);
-			chars += text.length();
-			parse(text);
+			
+			for(Element e : cnt) {
+				String text = render(e);
+				chars += text.length();
+				parse(text);
+
+			}
 
 			cnt.size();
 
@@ -164,8 +182,8 @@ public class FBReader {
 		
 		long st = System.currentTimeMillis();
 		
-		File fb2Path = new File("/media/f978cba3-c1ac-42e8-9daa-f34ee4b3ea55/torrents/_LIB.RUS.EC/lib.rus.ec");
-		//File fb2Path = new File(".");
+		//File fb2Path = new File("/media/f978cba3-c1ac-42e8-9daa-f34ee4b3ea55/torrents/_LIB.RUS.EC/lib.rus.ec");
+		File fb2Path = new File(".");
 		int count = 0;
 		
 		for(File f : fb2Path.listFiles()) {
@@ -180,7 +198,7 @@ public class FBReader {
 				break;
 		}
 		
-		//fbr.process(new File("101016-102097.zip"), p);
+//		fbr.process(new File("test.fb2"), p);
 		
 		System.out.printf("Elapsed: %d ms%n", System.currentTimeMillis() - st);
 		
@@ -203,6 +221,7 @@ public class FBReader {
 		});
 		
 		pw.close();
+		p.close();
 		
 	}
 
