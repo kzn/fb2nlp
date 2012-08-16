@@ -2,153 +2,91 @@ package name.kazennikov.fb2;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 import gnu.trove.procedure.TObjectIntProcedure;
+import name.kazennikov.tokens.*;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.util.ArrayList;
+import java.io.*;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import name.kazennikov.tokens.AbstractToken;
-import name.kazennikov.tokens.BaseToken;
-import name.kazennikov.tokens.BaseTokenType;
-import name.kazennikov.tokens.SentenceSplitter;
-import name.kazennikov.tokens.SimpleTokenizer;
-import name.kazennikov.tokens.TokenStream;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
-import org.jsoup.parser.Parser;
-import org.jsoup.select.Elements;
-import org.jsoup.select.NodeVisitor;
-
 
 public class FBReader {
-	
+
+    public static class SimpleJsoupProcessor extends AbstractJSoupProcessor {
+        int totCount = 0;
+        int rusCount = 0;
+        long chars = 0;
+        int tokens = 0;
+        long tokenChars = 0;
+        int sents = 0;
+        TObjectIntHashMap<String> words = new TObjectIntHashMap<String>();
+
+        PrintWriter pwSent;
+
+        public SimpleJsoupProcessor() throws IOException {
+            pwSent = new PrintWriter("sents.txt");
+        }
+
+        public void close() throws IOException {
+            pwSent.close();
+        }
+
+        public void add(String word) {
+            for(int i = 0; i != word.length(); i++) {
+                if(Character.isDigit(word.charAt(i)))
+                    return;
+            }
+
+            words.adjustOrPutValue(new String(word.toLowerCase()), 1, 1);
+        }
+
+        SentenceSplitter ss = new SentenceSplitter(new HashSet<String>());
+
+
+        @Override
+        public void process(String text) {
+            chars += text.length();
+            rusCount++;
+            List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
+
+            List<AbstractToken> sents = ss.split(new TokenStream(tokens));
+            this.sents += sents.size();
+
+            for(AbstractToken sent : sents) {
+                pwSent.println(sent.text());
+            }
+
+            for(AbstractToken t : tokens) {
+                if(t.is(BaseTokenType.SPACE) || t.is(BaseTokenType.NEWLINE) || t.is(BaseTokenType.PUNC))
+                    continue;
+
+                this.tokens++;
+                tokenChars += t.text().length();
+                add(t.text());
+
+
+            }
+        }
+
+
+    }
+
+    /**
+     * Process FB2 file for zip archive with
+     */
 	public static interface Processor {
+        /**
+         * Process single fb2 file in binary stream
+         * @param id file id
+         * @param is file stream
+         * @throws IOException
+         */
 		public void process(String id, InputStream is) throws IOException;
 	}
-	
-	public static class JSoupProcessor implements Processor {
-		int totCount = 0;
-		int rusCount = 0;
-		long chars = 0;
-		int tokens = 0;
-		long tokenChars = 0;
-		int sents = 0;
-		TObjectIntHashMap<String> words = new TObjectIntHashMap<String>();
-		
-		PrintWriter pwSent;
-		
-		public JSoupProcessor() throws IOException {
-			pwSent = new PrintWriter("sents.txt");
-		}
-		
-		public void close() throws IOException {
-			pwSent.close();
-		}
-		
-		public void add(String word) {
-			for(int i = 0; i != word.length(); i++) {
-				if(Character.isDigit(word.charAt(i)))
-					return;
-			}
-			
-			words.adjustOrPutValue(new String(word.toLowerCase()), 1, 1);
-		}
-		
-		SentenceSplitter ss = new SentenceSplitter(new HashSet<String>());
-		
-		public void parse(String text) {
-			List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
-			
-			List<AbstractToken> sents = ss.split(new TokenStream(tokens));
-			this.sents += sents.size();
-			
-			for(AbstractToken sent : sents) {
-				pwSent.println(sent.text());
-			}
-			
-			List<AbstractToken> filtered = new ArrayList<AbstractToken>(tokens.size());
-			
-			for(AbstractToken t : tokens) {
-				if(t.is(BaseTokenType.SPACE) || t.is(BaseTokenType.NEWLINE) || t.is(BaseTokenType.PUNC))
-					continue;
-				
-				filtered.add(t);
-			}
-			
-			
-			for(AbstractToken t : filtered) {
-				this.tokens++;
-				tokenChars += t.text().length();
-				add(t.text());
-			}
-			
-			
-		}
-		
-		public String render(Element e) {
-			final StringBuilder sb = new StringBuilder();
-			
-			e.traverse(new NodeVisitor() {
-				
-				@Override
-				public void tail(Node node, int depth) {
-					if(node instanceof Element && ((Element)node).tagName().equals("p")) {
-						sb.append("\n");
-					}
-				}
-				
-				@Override
-				public void head(Node node, int depth) {
-					if(node instanceof TextNode) {
-						sb.append(((TextNode) node).getWholeText());
-					}
-				}
-			});
-			
-			return sb.toString();
-		}
-		
-		@Override
-		public void process(String id, InputStream is) throws IOException {
-			Document doc = Jsoup.parse(is, null, "", Parser.xmlParser());
-			
-			Elements lang = doc.select("lang");
-			totCount++;
-			// skip non-russian
-			if(lang.first() != null && !lang.text().equals("ru")) {
-				return;
-			}
-			
-			
-			rusCount++;
-			Elements cnt = doc.select("p");
-			cnt.select("poem table epigraph empty-line stanza subtitle").remove();
-			
-			for(Element e : cnt) {
-				String text = render(e);
-				chars += text.length();
-				parse(text);
 
-			}
-
-			cnt.size();
-
-		}
-	}
-	
-	public void process(File f, Processor p) throws IOException {
+    public void process(File f, Processor p) throws IOException {
 		if(f.getName().endsWith(".zip")) {
 
 			ZipFile zip = new ZipFile(f);
@@ -178,7 +116,7 @@ public class FBReader {
 	public static void main(String[] args) throws IOException {
 		
 		FBReader fbr = new FBReader();
-		JSoupProcessor p = new JSoupProcessor();
+		SimpleJsoupProcessor p = new SimpleJsoupProcessor();
 		
 		long st = System.currentTimeMillis();
 		
