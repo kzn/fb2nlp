@@ -1,5 +1,6 @@
 package name.kazennikov.fb2;
 
+import gnu.trove.map.hash.TObjectIntHashMap;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -7,20 +8,30 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
-import org.jsoup.select.Evaluator;
 import org.jsoup.select.NodeVisitor;
-import org.jsoup.select.QueryParser;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
-* User: kazennikov
-* Date: 16.08.12
-* Time: 15:08
-*/
+ * Created with IntelliJ IDEA.
+ * User: ant
+ * Date: 16.08.12
+ * Time: 20:21
+ * To change this template use File | Settings | File Templates.
+ */
 public abstract class AbstractJSoupProcessor implements FBReader.Processor {
-    Evaluator cleaner = QueryParser.parse("title, subtitle, poem, table, epigraph, empty-line, stanza, subtitle");
+    TObjectIntHashMap<String> words = new TObjectIntHashMap<String>();
+
+
+    public void add(String word) {
+        for(int i = 0; i != word.length(); i++) {
+            if(Character.isDigit(word.charAt(i)))
+                return;
+        }
+
+        words.adjustOrPutValue(new String(word.toLowerCase()), 1, 1);
+    }
 
 
     public abstract void process(String text);
@@ -53,19 +64,17 @@ public abstract class AbstractJSoupProcessor implements FBReader.Processor {
         Document doc = Jsoup.parse(is, null, "", Parser.xmlParser());
 
         Elements lang = doc.select("lang");
-        // skip non-russian
+                // skip non-russian
         if(lang.first() != null && !lang.text().equals("ru")) {
             return;
         }
 
-        doc.select(cleaner).remove();
 
         Elements cnt = doc.select("p");
-        cnt.select("poem, table, epigraph, empty-line, stanza, subtitle").remove();
+        cnt.select("poem table epigraph empty-line stanza subtitle").remove();
 
         for(Element e : cnt) {
             String text = render(e);
-
             process(text);
 
         }
@@ -73,4 +82,6 @@ public abstract class AbstractJSoupProcessor implements FBReader.Processor {
         cnt.size();
 
     }
+
+
 }

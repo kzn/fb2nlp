@@ -2,7 +2,8 @@ package name.kazennikov.fb2;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 import gnu.trove.procedure.TObjectIntProcedure;
-import name.kazennikov.tokens.*;
+import name.kazennikov.annotations.BaseTokenType;
+import name.kazennikov.annotations.*;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -42,29 +43,33 @@ public class FBReader {
             words.adjustOrPutValue(new String(word.toLowerCase()), 1, 1);
         }
 
-        SentenceSplitter ss = new SentenceSplitter(new HashSet<String>());
-
+        SentenceSplitter ss = new SentenceSplitter(new HashSet<String>(), false);
+        UnicodeTokenizer tokenizer = new UnicodeTokenizer();
 
         @Override
         public void process(String text) {
             chars += text.length();
             rusCount++;
-            List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
+            Document doc = new Document(text);
+            tokenizer.annotate(doc);
+            ss.annotate(doc);
+            //List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
 
-            List<AbstractToken> sents = ss.split(new TokenStream(tokens));
-            this.sents += sents.size();
+            //List<AbstractToken> sents = ss.split(new TokenStream(tokens));
+            this.sents += doc.get(Annotation.SENT).size();
 
-            for(AbstractToken sent : sents) {
-                pwSent.println(sent.text());
+            for(Annotation sent : doc.get(Annotation.SENT)) {
+                pwSent.println(sent.getText());
             }
 
-            for(AbstractToken t : tokens) {
-                if(t.is(BaseTokenType.SPACE) || t.is(BaseTokenType.NEWLINE) || t.is(BaseTokenType.PUNC))
+            for(Annotation t : doc.get(Annotation.TOKEN)) {
+            	BaseTokenType type = t.getFeature(Annotation.TYPE);
+                if(type.is(BaseTokenType.SPACE) || type.is(BaseTokenType.NEWLINE) || type.is(BaseTokenType.PUNC))
                     continue;
 
                 this.tokens++;
-                tokenChars += t.text().length();
-                add(t.text());
+                tokenChars += t.getText().length();
+                add(t.getText());
 
 
             }
