@@ -2,15 +2,22 @@ package name.kazennikov.fb2;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 import gnu.trove.procedure.TObjectIntProcedure;
-import name.kazennikov.annotations.BaseTokenType;
-import name.kazennikov.annotations.*;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import name.kazennikov.annotations.Annotation;
+import name.kazennikov.annotations.BaseTokenType;
+import name.kazennikov.annotations.Document;
+import name.kazennikov.annotations.annotators.SentenceSplitter;
+import name.kazennikov.annotations.annotators.UnicodeTokenizer;
 
 
 public class FBReader {
@@ -34,7 +41,8 @@ public class FBReader {
             pwSent.close();
         }
 
-        public void add(String word) {
+        @Override
+		public void add(String word) {
             for(int i = 0; i != word.length(); i++) {
                 if(Character.isDigit(word.charAt(i)))
                     return;
