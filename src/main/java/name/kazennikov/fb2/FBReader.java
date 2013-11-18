@@ -14,6 +14,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import name.kazennikov.annotations.Annotation;
+import name.kazennikov.annotations.AnnotationConstants;
 import name.kazennikov.annotations.BaseTokenType;
 import name.kazennikov.annotations.Document;
 import name.kazennikov.annotations.annotators.SentenceSplitter;
@@ -64,14 +65,14 @@ public class FBReader {
             //List<AbstractToken> tokens = SimpleTokenizer.tokenize(text);
 
             //List<AbstractToken> sents = ss.split(new TokenStream(tokens));
-            this.sents += doc.get(Annotation.SENT).size();
+            this.sents += doc.get(AnnotationConstants.SENT).size();
 
-            for(Annotation sent : doc.get(Annotation.SENT)) {
+            for(Annotation sent : doc.get(AnnotationConstants.SENT)) {
                 pwSent.println(sent.getText());
             }
 
-            for(Annotation t : doc.get(Annotation.TOKEN)) {
-            	BaseTokenType type = t.getFeature(Annotation.TYPE);
+            for(Annotation t : doc.get(AnnotationConstants.TOKEN)) {
+            	BaseTokenType type = t.getFeature(AnnotationConstants.TYPE);
                 if(type.is(BaseTokenType.SPACE) || type.is(BaseTokenType.NEWLINE) || type.is(BaseTokenType.PUNC))
                     continue;
 
