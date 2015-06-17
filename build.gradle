@@ -13,11 +13,11 @@ repositories {
 }
 
 dependencies {
-	compile 'net.sf.trove4j:trove4j:3.0.3'
+	compile "net.sf.trove4j:trove4j:$trove4jVersion"
 	compile project(':modules:logger')
 	compile project(':modules:tokens')
-	compile 'com.google.guava:guava:12.0'
-	compile 'org.jsoup:jsoup:1.7.3'
+	compile "com.google.guava:guava:$guavaVersion"
+	compile project(':modules:jsoup')
 
 	
 }
